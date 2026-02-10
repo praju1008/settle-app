@@ -1,0 +1,243 @@
+/* src/styles/GroupDetailPage.css */
+
+.group-detail-page {
+  margin-top: 8px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+
+.back-button {
+  border: none;
+  background: none;
+  color: #2563eb;
+  cursor: pointer;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.back-button:hover {
+  text-decoration: underline;
+}
+
+.group-title {
+  margin: 0 0 12px 0;
+  color: #111827;
+}
+
+.section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.section-title {
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.members-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.members-list-item {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.85rem;
+}
+
+.expense-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-row label {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.form-row input,
+.form-row select {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+.participants-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.participant-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+}
+
+.add-expense-button {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background-color: #10b981;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.add-expense-button:hover {
+  background-color: #059669;
+}
+
+.expenses-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.expenses-list-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.expense-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.expense-description {
+  font-weight: 500;
+}
+
+.expense-amount {
+  font-weight: 500;
+  color: #111827;
+}
+
+.expense-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+}
+
+.empty-text {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.balances-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.balances-list-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.balance-name {
+  font-weight: 500;
+}
+
+.balance-positive {
+  color: #16a34a;
+}
+
+.balance-negative {
+  color: #dc2626;
+}
+
+.balance-zero {
+  color: #6b7280;
+}
+
+
+/* settlement styles */
+
+.settle-form {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-row-inline {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+  flex: 1;
+}
+
+.form-field select,
+.form-field input {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+.settle-button {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background-color: #4f46e5;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.settle-button:hover {
+  background-color: #4338ca;
+}
+
+.settlements-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 8px;
+}
+
+.settlements-list-item {
+  padding: 6px 0;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.settlement-note {
+  color: #6b7280;
+  font-size: 0.8rem;
+}

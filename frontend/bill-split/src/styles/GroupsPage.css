@@ -1,0 +1,84 @@
+/* src/styles/GroupsPage.css */
+
+.groups-page {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+
+.groups-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.groups-header h2 {
+  margin: 0;
+  color: #111827;
+}
+
+.add-group-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.add-group-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+.add-group-button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background-color: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.add-group-button:hover {
+  background-color: #1d4ed8;
+}
+
+.groups-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.groups-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.group-name {
+  font-weight: 500;
+  color: #111827;
+}
+
+.open-group-button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #2563eb;
+  background-color: white;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.open-group-button:hover {
+  background-color: #eff6ff;
+}
+.error-text {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
