@@ -251,6 +251,8 @@ This project is open source and available under the MIT License.
 
 ## Author 👤
 
+Prajwal Mathapati
+
 Created as a full-stack expense management application.
 
 ---
