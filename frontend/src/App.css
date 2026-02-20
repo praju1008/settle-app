@@ -53,3 +53,8 @@
   margin-bottom: 24px;
   color: #1f2933;
 }
+/* App.css - placeholder to resolve import error */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}

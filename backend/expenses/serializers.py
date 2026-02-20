@@ -4,6 +4,12 @@ from django.contrib.auth.models import User
 from .models import Group, GroupMember, Expense, ExpenseShare, Settlement
 
 
+class SimpleUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username"]
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -11,7 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class GroupSerializer(serializers.ModelSerializer):
-    created_by = UserSerializer(read_only=True)
+    created_by = SimpleUserSerializer(read_only=True)
 
     class Meta:
         model = Group
@@ -19,7 +25,7 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class GroupMemberSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = SimpleUserSerializer(read_only=True)
 
     class Meta:
         model = GroupMember
@@ -27,7 +33,7 @@ class GroupMemberSerializer(serializers.ModelSerializer):
 
 
 class ExpenseShareSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = SimpleUserSerializer(read_only=True)
 
     class Meta:
         model = ExpenseShare
@@ -35,7 +41,7 @@ class ExpenseShareSerializer(serializers.ModelSerializer):
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
-    paid_by = UserSerializer(read_only=True)
+    paid_by = SimpleUserSerializer(read_only=True)
     shares = ExpenseShareSerializer(many=True, read_only=True)
 
     class Meta:
@@ -45,15 +51,18 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "group",
             "description",
             "amount",
+            "category",
+            "date",
             "paid_by",
             "created_at",
             "shares",
         ]
+        read_only_fields = ["id", "paid_by", "created_at", "shares"]
 
 
 class SettlementSerializer(serializers.ModelSerializer):
-    from_user = UserSerializer(read_only=True)
-    to_user = UserSerializer(read_only=True)
+    from_user = SimpleUserSerializer(read_only=True)
+    to_user = SimpleUserSerializer(read_only=True)
 
     class Meta:
         model = Settlement
@@ -63,6 +72,6 @@ class SettlementSerializer(serializers.ModelSerializer):
             "from_user",
             "to_user",
             "amount",
-            "settled_at",
-            "created_at",
+            "created_at",   # ONLY fields that really exist
         ]
+        read_only_fields = ["id", "from_user", "to_user", "created_at"]

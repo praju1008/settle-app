@@ -31,19 +31,16 @@ class GroupMember(models.Model):
 
 
 class Expense(models.Model):
-    """Represents an expense in a group."""
-    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='expenses')
-    description = models.CharField(max_length=255)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    description = models.CharField(max_length=200)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    paid_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='paid_expenses')
+
+    # NEW FIELDS
+    category = models.CharField(max_length=50, blank=True)  # e.g. Food, Travel
+    date = models.DateField(null=True, blank=True)
+
+    paid_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.description} - ${self.amount}"
 
 
 class ExpenseShare(models.Model):
@@ -58,18 +55,14 @@ class ExpenseShare(models.Model):
     def __str__(self):
         return f"{self.user.username} owes ${self.amount} for {self.expense.description}"
 
-
 class Settlement(models.Model):
-    """Represents a settlement between two users."""
-    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='settlements')
-    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='settlements_owed')
-    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='settlements_received')
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    from_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="settlements_from"
+    )
+    to_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="settlements_to"
+    )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    settled_at = models.DateTimeField(null=True, blank=True)
+    note = models.CharField(max_length=200, blank=True)  # <-- ADD THIS
     created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.from_user.username} pays {self.to_user.username} ${self.amount}"

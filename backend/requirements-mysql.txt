@@ -1,0 +1,14 @@
+# Core Django
+Django==6.0.2
+djangorestframework==3.16.1
+django-cors-headers==4.3.0
+
+# Database
+mysqlclient==2.2.7
+mysql-connector-python==9.5.0
+
+# Environment Variables
+python-dotenv==1.2.1
+
+# Development
+django-extensions==3.2.3

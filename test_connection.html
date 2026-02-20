@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settle App - Connection Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+        
+        .test-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .test-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .response-data {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 10px;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-test {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-test:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-clear {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-clear:hover {
+            background: #5a6268;
+        }
+        
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            border-radius: 5px;
+        }
+        
+        .summary h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+        
+        .summary p {
+            color: #333;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .icon {
+            display: inline-block;
+            margin-right: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Settle App - Connection Test</h1>
+        
+        <!-- Backend Connection Test -->
+        <div class="test-section">
+            <div class="test-title">1. Backend Server Connection</div>
+            <div id="backend-status" class="status loading">⏳ Testing...</div>
+            <div id="backend-response" class="response-data" style="display:none;"></div>
+        </div>
+        
+        <!-- Frontend Server Test -->
+        <div class="test-section">
+            <div class="test-title">2. Frontend Server Connection</div>
+            <div id="frontend-status" class="status loading">⏳ Testing...</div>
+            <div id="frontend-response" class="response-data" style="display:none;"></div>
+        </div>
+        
+        <!-- API Connectivity Test -->
+        <div class="test-section">
+            <div class="test-title">3. Fetch Groups from API</div>
+            <div id="api-status" class="status loading">⏳ Testing...</div>
+            <div id="api-response" class="response-data" style="display:none;"></div>
+        </div>
+        
+        <!-- Create Group Test -->
+        <div class="test-section">
+            <div class="test-title">4. Create Group (POST Test)</div>
+            <div id="create-status" class="status loading">⏳ Ready</div>
+            <div id="create-response" class="response-data" style="display:none;"></div>
+        </div>
+        
+        <!-- CORS Test -->
+        <div class="test-section">
+            <div class="test-title">5. CORS Configuration</div>
+            <div id="cors-status" class="status loading">⏳ Testing...</div>
+            <div id="cors-response" class="response-data" style="display:none;"></div>
+        </div>
+        
+        <!-- Summary -->
+        <div class="summary">
+            <h3>📊 Connection Summary</h3>
+            <p id="summary-text">Running tests...</p>
+        </div>
+        
+        <!-- Buttons -->
+        <div class="buttons">
+            <button class="btn-test" onclick="runAllTests()">🔄 Run All Tests</button>
+            <button class="btn-clear" onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000/api";
+        const FRONTEND_URL = "http://localhost:3000";
+
+        function updateStatus(elementId, status, message, data = null) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${status}`;
+            
+            let icon = '⏳';
+            if (status === 'success') icon = '✅';
+            if (status === 'error') icon = '❌';
+            
+            element.textContent = `${icon} ${message}`;
+            
+            if (data) {
+                const responseEl = document.getElementById(elementId + '-response');
+                responseEl.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+                responseEl.style.display = 'block';
+            }
+        }
+
+        async function testBackend() {
+            try {
+                updateStatus('backend-status', 'loading', 'Testing backend...');
+                const response = await fetch(`${API_BASE}/groups/`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('backend-status', 'success', 
+                        `Backend OK - ${data.length} groups found`, 
+                        JSON.stringify(data.slice(0, 1), null, 2));
+                } else {
+                    updateStatus('backend-status', 'error', 
+                        `Backend error: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                updateStatus('backend-status', 'error', 
+                    `Backend error: ${error.message}`);
+            }
+        }
+
+        async function testFrontend() {
+            try {
+                updateStatus('frontend-status', 'loading', 'Testing frontend...');
+                const response = await fetch(FRONTEND_URL);
+                
+                if (response.ok) {
+                    updateStatus('frontend-status', 'success', 
+                        'Frontend OK - React app is running');
+                } else {
+                    updateStatus('frontend-status', 'error', 
+                        `Frontend error: ${response.status}`);
+                }
+            } catch (error) {
+                updateStatus('frontend-status', 'error', 
+                    `Frontend error: ${error.message}`);
+            }
+        }
+
+        async function testAPIConnectivity() {
+            try {
+                updateStatus('api-status', 'loading', 'Fetching groups...');
+                const response = await fetch(`${API_BASE}/groups/`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Origin': FRONTEND_URL
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const count = data.length;
+                    updateStatus('api-status', 'success', 
+                        `API OK - Retrieved ${count} group(s)`, 
+                        data);
+                } else {
+                    updateStatus('api-status', 'error', 
+                        `API error: ${response.status}`);
+                }
+            } catch (error) {
+                updateStatus('api-status', 'error', 
+                    `API error: ${error.message}`);
+            }
+        }
+
+        async function testCreateGroup() {
+            try {
+                updateStatus('create-status', 'loading', 'Creating test group...');
+                const testName = `Test Group ${Date.now()}`;
+                
+                const response = await fetch(`${API_BASE}/groups/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Origin': FRONTEND_URL
+                    },
+                    body: JSON.stringify({ name: testName })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('create-status', 'success', 
+                        `Group created: ${data.name}`, 
+                        data);
+                } else {
+                    updateStatus('create-status', 'error', 
+                        `Create failed: ${response.status}`);
+                }
+            } catch (error) {
+                updateStatus('create-status', 'error', 
+                    `Create error: ${error.message}`);
+            }
+        }
+
+        async function testCORS() {
+            try {
+                updateStatus('cors-status', 'loading', 'Testing CORS...');
+                const response = await fetch(`${API_BASE}/groups/`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const corsHeader = response.headers.get('Access-Control-Allow-Origin');
+                
+                if (corsHeader) {
+                    updateStatus('cors-status', 'success', 
+                        `CORS OK - Allow-Origin: ${corsHeader}`);
+                } else {
+                    updateStatus('cors-status', 'error', 
+                        'CORS header not found');
+                }
+            } catch (error) {
+                updateStatus('cors-status', 'error', 
+                    `CORS error: ${error.message}`);
+            }
+        }
+
+        async function runAllTests() {
+            console.log('Starting all tests...');
+            await testBackend();
+            await testFrontend();
+            await testAPIConnectivity();
+            await testCORS();
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const backendOk = document.getElementById('backend-status').className.includes('success');
+            const frontendOk = document.getElementById('frontend-status').className.includes('success');
+            const apiOk = document.getElementById('api-status').className.includes('success');
+            const corsOk = document.getElementById('cors-status').className.includes('success');
+            
+            let summaryText = '';
+            
+            if (backendOk && frontendOk && apiOk && corsOk) {
+                summaryText = '✅ All systems connected successfully!\n\n' +
+                    '📱 Frontend: http://localhost:3000\n' +
+                    '🔗 Backend API: http://127.0.0.1:8000/api\n' +
+                    '✓ CORS enabled\n' +
+                    '✓ Groups API working';
+            } else {
+                summaryText = '⚠️ Some tests failed. Check details above.';
+                if (!backendOk) summaryText += '\n• Backend not responding';
+                if (!frontendOk) summaryText += '\n• Frontend not responding';
+                if (!apiOk) summaryText += '\n• API not working';
+                if (!corsOk) summaryText += '\n• CORS not configured';
+            }
+            
+            document.getElementById('summary-text').textContent = summaryText;
+        }
+
+        function clearResults() {
+            document.querySelectorAll('.status').forEach(el => {
+                el.className = 'status loading';
+                el.textContent = '⏳ Ready';
+            });
+            document.querySelectorAll('.response-data').forEach(el => {
+                el.style.display = 'none';
+            });
+            document.getElementById('summary-text').textContent = 'Click "Run All Tests" to test connection';
+        }
+
+        // Run tests on page load
+        window.addEventListener('load', runAllTests);
+    </script>
+</body>
+</html>
