@@ -131,3 +131,10 @@ export async function deleteSettlement(id) {
   });
   if (!res.ok) throw new Error("Failed to delete settlement");
 }
+
+// ---------- Analytics ----------
+export async function fetchGroupAnalytics(groupId) {
+  const res = await fetch(`${API_BASE}/expenses/analytics/?group=${groupId}`);
+  if (!res.ok) throw new Error("Failed to load analytics");
+  return res.json();
+}

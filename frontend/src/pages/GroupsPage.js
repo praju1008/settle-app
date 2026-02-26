@@ -102,109 +102,117 @@ function GroupsPage({ onOpenGroup }) {
   if (loading) {
     return (
       <div className="groups-page">
-        <div className="groups-header">
-          <h2>Your Groups</h2>
+        <div className="groups-card">
+          <div className="groups-header">
+            <h2 className="groups-title">Your Groups</h2>
+          </div>
+          <p style={{ color: "#e5e7eb", marginTop: 8 }}>Loading groups...</p>
         </div>
-        <p>Loading groups...</p>
       </div>
     );
   }
 
   return (
     <div className="groups-page">
-      <div className="groups-header">
-        <h2>Your Groups</h2>
-      </div>
+      <div className="groups-card">
+        <div className="groups-header">
+          <h2 className="groups-title">Your Groups</h2>
+        </div>
 
-      {error && <p className="error-text">{error}</p>}
+        {error && <p className="error-text">{error}</p>}
 
-      <form className="add-group-form" onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="New group name (e.g. Office Lunch)"
-          value={groupName}
-          onChange={(e) => setGroupName(e.target.value)}
-          className="add-group-input"
-        />
-        <button type="submit" className="add-group-button">
-          Add Group
-        </button>
-      </form>
+        {/* New group form */}
+        <form className="groups-input-row" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="New group name (e.g. Office Lunch)"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            className="groups-input"
+          />
+          <button type="submit" className="btn-primary">
+            Add Group
+          </button>
+        </form>
 
-      {groups.length === 0 ? (
-        <p className="empty-text">
-          No groups yet. Create your first group above.
-        </p>
-      ) : (
-        <ul className="groups-list">
-          {groups.map((g) => {
-            const isEditing = editingId === g.id;
-            return (
-              <li key={g.id} className="groups-list-item">
-                <div className="group-main">
-                  {isEditing ? (
-                    <input
-                      className="group-edit-input"
-                      type="text"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      disabled={savingEdit}
-                    />
-                  ) : (
-                    <span className="group-name">{g.name || "Untitled"}</span>
-                  )}
-                </div>
-
-                <div className="group-actions">
-                  {isEditing ? (
-                    <>
-                      <button
-                        className="save-group-button"
-                        onClick={() => saveEdit(g)}
+        {/* Groups list */}
+        {groups.length === 0 ? (
+          <p className="empty-text">
+            No groups yet. Create your first group above.
+          </p>
+        ) : (
+          <div className="groups-table">
+            {groups.map((g) => {
+              const isEditing = editingId === g.id;
+              return (
+                <div key={g.id} className="groups-row">
+                  <div className="groups-name-wrapper">
+                    {isEditing ? (
+                      <input
+                        className="group-edit-input groups-input"
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
                         disabled={savingEdit}
-                        type="button"
-                      >
-                        {savingEdit ? "Saving..." : "Save"}
-                      </button>
-                      <button
-                        className="cancel-group-button"
-                        onClick={cancelEdit}
-                        type="button"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        className="edit-group-button"
-                        onClick={() => startEdit(g)}
-                        type="button"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="open-group-button"
-                        onClick={() => onOpenGroup(g)}
-                        type="button"
-                      >
-                        Open
-                      </button>
-                      <button
-                        className="delete-group-button"
-                        onClick={() => handleDeleteGroup(g.id)}
-                        type="button"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
+                      />
+                    ) : (
+                      <span className="groups-name">
+                        {g.name || "Untitled"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="groups-actions">
+                    {isEditing ? (
+                      <>
+                        <button
+                          className="btn-pill"
+                          onClick={() => saveEdit(g)}
+                          disabled={savingEdit}
+                          type="button"
+                        >
+                          {savingEdit ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          className="btn-pill"
+                          onClick={cancelEdit}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="btn-pill"
+                          onClick={() => startEdit(g)}
+                          type="button"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn-pill"
+                          onClick={() => onOpenGroup(g)}
+                          type="button"
+                        >
+                          Open
+                        </button>
+                        <button
+                          className="btn-danger"
+                          onClick={() => handleDeleteGroup(g.id)}
+                          type="button"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

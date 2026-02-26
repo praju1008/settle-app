@@ -12,7 +12,24 @@ import {
   updateExpense,
   deleteExpense,
   deleteSettlement,
+  fetchGroupAnalytics,
 } from "../api";
+
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
 
 // Calculate balances for each member based on expenses and settlements
 function calculateBalances(members, expenses, settlements) {
@@ -21,31 +38,29 @@ function calculateBalances(members, expenses, settlements) {
     balances[m] = 0;
   });
 
-  // 1) Apply expenses
+  // Expenses: everyone owes equal share, payer fronted the full amount
   expenses.forEach((exp) => {
-    const participants = members;
-    const share =
-      exp.amount && participants.length > 0
-        ? exp.amount / participants.length
-        : 0;
+    const participants = members; // all members share equally for now
+    if (!exp.amount || participants.length === 0) return;
+
+    const amount = Number(exp.amount) || 0;
+    const share = amount / participants.length;
 
     const paidByName =
       exp.paid_by && exp.paid_by.username ? exp.paid_by.username : "Unknown";
 
+    // Each participant owes their share
     participants.forEach((person) => {
       if (balances[person] === undefined) balances[person] = 0;
-      if (balances[paidByName] === undefined) balances[paidByName] = 0;
-
-      if (person === paidByName) {
-        balances[person] += exp.amount - share;
-      } else {
-        balances[person] -= share;
-        balances[paidByName] += share;
-      }
+      balances[person] -= share;
     });
+
+    // Payer gets credit for paying the whole bill
+    if (balances[paidByName] === undefined) balances[paidByName] = 0;
+    balances[paidByName] += amount;
   });
 
-  // 2) Apply settlements
+  // Settlements: from pays to
   settlements.forEach((s) => {
     const fromName =
       s.from_user && s.from_user.username
@@ -62,14 +77,16 @@ function calculateBalances(members, expenses, settlements) {
     if (balances[toName] === undefined) balances[toName] = 0;
 
     const amt = Number(s.amount) || 0;
+    // From pays money → their debt reduces
     balances[fromName] += amt;
+    // To receives money → their credit reduces
     balances[toName] -= amt;
   });
 
   return balances;
 }
 
-// Add-Expense form now also shows which member is payer (read-only text)
+// Add-Expense form
 function ExpensesForm({ groupId, onAddExpense, currentPayer }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -98,7 +115,7 @@ function ExpensesForm({ groupId, onAddExpense, currentPayer }) {
         group: groupId,
         description: trimmedDesc,
         amount: amt,
-        paid_by_name: currentPayer, // NEW: who paid
+        paid_by_name: currentPayer,
       });
 
       setDescription("");
@@ -145,7 +162,7 @@ function ExpensesForm({ groupId, onAddExpense, currentPayer }) {
           />
         </div>
 
-        <button type="submit" className="add-expense-button" disabled={loading}>
+        <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? "Adding..." : "Add Expense"}
         </button>
       </form>
@@ -155,7 +172,7 @@ function ExpensesForm({ groupId, onAddExpense, currentPayer }) {
 
 function GroupDetailPage({ group, onBack }) {
   const [members, setMembers] = useState([]);
-  const [currentPayer, setCurrentPayer] = useState(""); // NEW
+  const [currentPayer, setCurrentPayer] = useState("");
 
   const [expenses, setExpenses] = useState([]);
   const [settlements, setSettlements] = useState([]);
@@ -178,6 +195,12 @@ function GroupDetailPage({ group, onBack }) {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Tabs & analytics
+  const [tab, setTab] = useState("details"); // "details" | "summary"
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -205,7 +228,7 @@ function GroupDetailPage({ group, onBack }) {
         setMembers(memberNames);
 
         if (memberNames.length > 0) {
-          setCurrentPayer(memberNames[0]); // default payer
+          setCurrentPayer(memberNames[0]);
         }
         if (memberNames.length > 1) {
           setSettleFrom(memberNames[0]);
@@ -214,6 +237,10 @@ function GroupDetailPage({ group, onBack }) {
           setSettleFrom(memberNames[0]);
           setSettleTo(memberNames[0]);
         }
+
+        // reset analytics when group changes
+        setAnalytics(null);
+        setAnalyticsError("");
       } catch (e) {
         console.error(e);
         setError("Failed to load group data");
@@ -226,6 +253,21 @@ function GroupDetailPage({ group, onBack }) {
       load();
     }
   }, [group]);
+
+  const loadAnalytics = async () => {
+    if (!group?.id) return;
+    try {
+      setAnalyticsLoading(true);
+      setAnalyticsError("");
+      const data = await fetchGroupAnalytics(group.id);
+      setAnalytics(data);
+    } catch (e) {
+      console.error(e);
+      setAnalyticsError("Failed to load insights");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
 
   const balances = useMemo(
     () => calculateBalances(members, expenses, settlements),
@@ -397,320 +439,461 @@ function GroupDetailPage({ group, onBack }) {
   if (loading) {
     return (
       <div className="group-detail-page">
-        <button className="back-button" onClick={onBack}>
-          ← Back to Groups
-        </button>
-        <p>Loading group data...</p>
+        <div className="group-detail-page-inner">
+          <button className="back-button" onClick={onBack}>
+            ← Back to Groups
+          </button>
+          <p style={{ color: "#e5e7eb", marginTop: 8 }}>Loading group data...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="group-detail-page">
-      <button className="back-button" onClick={onBack}>
-        ← Back to Groups
-      </button>
+      <div className="group-detail-page-inner">
+        <button className="back-button" onClick={onBack}>
+          ← Back to Groups
+        </button>
 
-      <h2 className="group-title">{group?.name || "Group"}</h2>
+        <h2 className="group-title">{group?.name || "Group"}</h2>
 
-      {error && <p className="error-text">{error}</p>}
+        {error && <p className="error-text">{error}</p>}
 
-      {/* Members with "Set as payer" */}
-      <div className="section">
-        <h3 className="section-title">Members</h3>
-        <ul className="members-list">
-          {members.length === 0 ? (
-            <li className="members-list-item">No members yet.</li>
-          ) : (
-            members.map((m) => {
-              const isEditing = editingMember === m;
-              const isPayer = currentPayer === m;
-              return (
-                <li key={m} className="members-list-item">
-                  {isEditing ? (
-                    <>
-                      <input
-                        className="member-edit-input"
-                        type="text"
-                        value={editingMemberName}
-                        onChange={(e) =>
-                          setEditingMemberName(e.target.value)
-                        }
-                        disabled={savingMemberEdit}
-                      />
-                      <button
-                        type="button"
-                        className="save-member-button"
-                        onClick={() => saveEditMember(m)}
-                        disabled={savingMemberEdit}
-                      >
-                        {savingMemberEdit ? "Saving..." : "Save"}
-                      </button>
-                      <button
-                        type="button"
-                        className="cancel-member-button"
-                        onClick={cancelEditMember}
-                        disabled={savingMemberEdit}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span>
-                        {m} {isPayer && <span className="payer-tag">(payer)</span>}
-                      </span>
-                      <button
-                        type="button"
-                        className="edit-member-button"
-                        onClick={() => startEditMember(m)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="set-payer-button"
-                        onClick={() => setCurrentPayer(m)}
-                      >
-                        Set as payer
-                      </button>
-                    </>
-                  )}
-                </li>
-              );
-            })
-          )}
-        </ul>
-
-        <form className="add-member-form" onSubmit={handleAddMember}>
-          <input
-            type="text"
-            placeholder="Add friend name (e.g. Rahul)"
-            value={newMemberName}
-            onChange={(e) => setNewMemberName(e.target.value)}
-            disabled={addingMember}
-            className="add-member-input"
-          />
+        {/* Tabs */}
+        <div className="group-tabs">
           <button
-            type="submit"
-            className="add-member-button"
-            disabled={addingMember}
+            type="button"
+            className={tab === "details" ? "tab-pill active" : "tab-pill"}
+            onClick={() => setTab("details")}
           >
-            {addingMember ? "Adding..." : "Add Friend"}
+            Details
           </button>
-        </form>
-      </div>
-
-      {/* Add Expense */}
-      <ExpensesForm
-        groupId={group.id}
-        onAddExpense={handleAddExpense}
-        currentPayer={currentPayer}
-      />
-
-      {/* Expenses list */}
-      <div className="section">
-        <h3 className="section-title">Expenses</h3>
-        {expenses.length === 0 ? (
-          <p className="empty-text">No expenses yet. Add one above.</p>
-        ) : (
-          <ul className="expenses-list">
-            {expenses.map((exp) => {
-              const isEditing = editingExpenseId === exp.id;
-              return (
-                <li key={exp.id} className="expenses-list-item">
-                  <div className="expense-main">
-                    {isEditing ? (
-                      <>
-                        <input
-                          className="expense-edit-input"
-                          type="text"
-                          value={editDesc}
-                          onChange={(e) => setEditDesc(e.target.value)}
-                        />
-                        <input
-                          className="expense-edit-input amount"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={editAmount}
-                          onChange={(e) => setEditAmount(e.target.value)}
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <span className="expense-description">
-                          {exp.description}
-                        </span>
-                        <span className="expense-amount">₹{exp.amount}</span>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="expense-meta">
-                    <span>
-                      Paid by:{" "}
-                      {exp.paid_by && exp.paid_by.username
-                        ? exp.paid_by.username
-                        : "Unknown"}
-                    </span>
-                  </div>
-
-                  <div className="expense-actions">
-                    {isEditing ? (
-                      <>
-                        <button
-                          type="button"
-                          className="save-expense-button"
-                          onClick={() => saveEditExpense(exp)}
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          className="cancel-expense-button"
-                          onClick={cancelEditExpense}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="edit-expense-button"
-                          onClick={() => startEditExpense(exp)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="delete-expense-button"
-                          onClick={() => handleDeleteExpense(exp.id)}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-
-      {/* Settlements */}
-      <div className="section">
-        <h3 className="section-title">Settle Payment (record only)</h3>
-        <form className="settle-form" onSubmit={handleAddSettlement}>
-          <div className="form-row">
-            <label>From</label>
-            <select
-              value={settleFrom}
-              onChange={(e) => setSettleFrom(e.target.value)}
-            >
-              {members.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-row">
-            <label>To</label>
-            <select
-              value={settleTo}
-              onChange={(e) => setSettleTo(e.target.value)}
-            >
-              {members.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-row">
-            <label>Amount (₹)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={settleAmount}
-              onChange={(e) => setSettleAmount(e.target.value)}
-            />
-          </div>
-
-          <div className="form-row">
-            <label>Note (optional)</label>
-            <input
-              type="text"
-              placeholder="UPI, cash, etc."
-              value={settleNote}
-              onChange={(e) => setSettleNote(e.target.value)}
-            />
-          </div>
-
-          <button type="submit" className="settle-button">
-            Add Settlement
+          <button
+            type="button"
+            className={tab === "summary" ? "tab-pill active" : "tab-pill"}
+            onClick={() => {
+              setTab("summary");
+              if (!analytics) loadAnalytics();
+            }}
+          >
+            Summary / Insights
           </button>
-        </form>
+        </div>
 
-        {settlements.length === 0 ? (
-          <p className="empty-text">No settlements recorded yet.</p>
-        ) : (
-          <ul className="settlements-list">
-            {settlements.map((s) => (
-              <li key={s.id} className="settlements-list-item">
-                <span>
-                  {s.from_user && s.from_user.username
-                    ? s.from_user.username
-                    : s.from_name || "Someone"}{" "}
-                  paid{" "}
-                  {s.to_user && s.to_user.username
-                    ? s.to_user.username
-                    : s.to_name || "someone"}{" "}
-                  ₹{s.amount}
-                </span>
-                {s.note && (
-                  <span className="settlement-note">{s.note}</span>
+        {tab === "details" ? (
+          <div className="group-columns">
+            {/* Column 1: Members */}
+            <div className="section">
+              <h3 className="section-title">Members</h3>
+              <p className="small-text">
+                Tap “Set as payer” to select who paid for the next expense.
+              </p>
+              <ul className="members-list">
+                {members.length === 0 ? (
+                  <li className="members-list-item">
+                    <span className="members-name">No members yet.</span>
+                  </li>
+                ) : (
+                  members.map((m) => {
+                    const isEditing = editingMember === m;
+                    const isPayer = currentPayer === m;
+                    return (
+                      <li key={m} className="members-list-item">
+                        <div className="members-left">
+                          {isEditing ? (
+                            <input
+                              className="member-edit-input"
+                              type="text"
+                              value={editingMemberName}
+                              onChange={(e) =>
+                                setEditingMemberName(e.target.value)
+                              }
+                              disabled={savingMemberEdit}
+                            />
+                          ) : (
+                            <>
+                              <span className="members-name">{m}</span>
+                              {isPayer && (
+                                <span className="payer-tag">payer</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <div className="member-actions">
+                          {isEditing ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-pill"
+                                onClick={() => saveEditMember(m)}
+                                disabled={savingMemberEdit}
+                              >
+                                {savingMemberEdit ? "Saving..." : "Save"}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-pill"
+                                onClick={cancelEditMember}
+                                disabled={savingMemberEdit}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-pill"
+                                onClick={() => startEditMember(m)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-pill"
+                                onClick={() => setCurrentPayer(m)}
+                              >
+                                Set as payer
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })
                 )}
-                <button
-                  type="button"
-                  className="delete-settlement-button"
-                  onClick={() => handleDeleteSettlement(s.id)}
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+              </ul>
 
-      {/* Balances */}
-      <div className="section">
-        <h3 className="section-title">Balances (approx)</h3>
-        <ul className="balances-list">
-          {Object.entries(balances).map(([name, value]) => (
-            <li key={name} className="balances-list-item">
-              <span className="balance-name">{name}</span>
-              {value > 0 ? (
-                <span className="balance-positive">
-                  should receive ₹{value.toFixed(2)}
-                </span>
-              ) : value < 0 ? (
-                <span className="balance-negative">
-                  owes ₹{(-value).toFixed(2)}
-                </span>
+              <form className="add-member-form" onSubmit={handleAddMember}>
+                <div className="form-row">
+                  <label>Add friend</label>
+                  <input
+                    type="text"
+                    placeholder="Friend name (e.g. Rahul)"
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                    disabled={addingMember}
+                    className="add-member-input"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={addingMember}
+                >
+                  {addingMember ? "Adding..." : "Add Friend"}
+                </button>
+              </form>
+            </div>
+
+            {/* Column 2: Add Expense */}
+            <ExpensesForm
+              groupId={group.id}
+              onAddExpense={handleAddExpense}
+              currentPayer={currentPayer}
+            />
+
+            {/* Column 3: Expenses list */}
+            <div className="section">
+              <h3 className="section-title">Expenses</h3>
+              {expenses.length === 0 ? (
+                <p className="empty-text">
+                  No expenses yet. Add one in the form.
+                </p>
               ) : (
-                <span className="balance-zero">settled up</span>
+                <ul className="expenses-list">
+                  {expenses.map((exp) => {
+                    const isEditing = editingExpenseId === exp.id;
+                    return (
+                      <li key={exp.id} className="expenses-list-item">
+                        <div className="expense-main">
+                          {isEditing ? (
+                            <>
+                              <input
+                                className="expense-edit-input"
+                                type="text"
+                                value={editDesc}
+                                onChange={(e) => setEditDesc(e.target.value)}
+                              />
+                              <input
+                                className="expense-edit-input amount"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editAmount}
+                                onChange={(e) =>
+                                  setEditAmount(e.target.value)
+                                }
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <span className="expense-description">
+                                {exp.description}
+                              </span>
+                              <span className="expense-amount">
+                                ₹{exp.amount}
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="expense-meta">
+                          <span>
+                            Paid by:{" "}
+                            {exp.paid_by && exp.paid_by.username
+                              ? exp.paid_by.username
+                              : "Unknown"}
+                          </span>
+                          <span className="expense-meta-separator">•</span>
+                          <span>
+                            Date:{" "}
+                            {exp.date
+                              ? exp.date
+                              : new Date(exp.created_at)
+                                  .toISOString()
+                                  .slice(0, 10)}
+                          </span>
+                        </div>
+
+                        <div className="expense-actions">
+                          {isEditing ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-pill"
+                                onClick={() => saveEditExpense(exp)}
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-pill"
+                                onClick={cancelEditExpense}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-pill"
+                                onClick={() => startEditExpense(exp)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-pill btn-pill-danger"
+                                onClick={() => handleDeleteExpense(exp.id)}
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-            </li>
-          ))}
-        </ul>
+            </div>
+
+            {/* Column 4: Settlements */}
+            <div className="section">
+              <h3 className="section-title">Settle Payment (record only)</h3>
+              <form className="settle-form" onSubmit={handleAddSettlement}>
+                <div className="form-row">
+                  <label>From</label>
+                  <select
+                    value={settleFrom}
+                    onChange={(e) => setSettleFrom(e.target.value)}
+                  >
+                    {members.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-row">
+                  <label>To</label>
+                  <select
+                    value={settleTo}
+                    onChange={(e) => setSettleTo(e.target.value)}
+                  >
+                    {members.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-row">
+                  <label>Amount (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={settleAmount}
+                    onChange={(e) => setSettleAmount(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-row">
+                  <label>Note (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="UPI, cash, etc."
+                    value={settleNote}
+                    onChange={(e) => setSettleNote(e.target.value)}
+                  />
+                </div>
+
+                <button type="submit" className="btn-primary">
+                  Add Settlement
+                </button>
+              </form>
+
+              {settlements.length === 0 ? (
+                <p className="empty-text" style={{ marginTop: 10 }}>
+                  No settlements recorded yet.
+                </p>
+              ) : (
+                <ul className="settlements-list">
+                  {settlements.map((s) => (
+                    <li key={s.id} className="settlements-list-item">
+                      <div className="settlement-main">
+                        <span>
+                          {s.from_user && s.from_user.username
+                            ? s.from_user.username
+                            : s.from_name || "Someone"}{" "}
+                          paid{" "}
+                          {s.to_user && s.to_user.username
+                            ? s.to_user.username
+                            : s.to_name || "someone"}{" "}
+                          ₹{s.amount}
+                        </span>
+                        {s.note && (
+                          <span className="settlement-note">{s.note}</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-pill btn-pill-danger"
+                        onClick={() => handleDeleteSettlement(s.id)}
+                      >
+                        Delete
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Column 5: Balances */}
+            <div className="section">
+              <h3 className="section-title">Balances (approx)</h3>
+              <ul className="balances-list">
+                {Object.entries(balances).map(([name, value]) => (
+                  <li key={name} className="balances-list-item">
+                    <span className="balance-name">{name}</span>
+                    {value > 0 ? (
+                      <span className="balance-positive">
+                        should receive ₹{value.toFixed(2)}
+                      </span>
+                    ) : value < 0 ? (
+                      <span className="balance-negative">
+                        owes ₹{(-value).toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="balance-zero">settled up</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <div className="section analytics-section">
+            <h3 className="section-title">Summary / Insights</h3>
+            {analyticsLoading && (
+              <p className="small-text">Loading insights...</p>
+            )}
+            {analyticsError && <p className="error-text">{analyticsError}</p>}
+            {analytics && (
+              <div className="analytics-grid">
+                {/* Total spent per member */}
+                <div className="analytics-card">
+                  <h4 className="analytics-title">Total spent per member</h4>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={analytics.per_member || []}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis dataKey="name" stroke="#9ca3af" />
+                      <YAxis stroke="#9ca3af" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="total" fill="#22c55e" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Category breakdown */}
+                <div className="analytics-card">
+                  <h4 className="analytics-title">Category breakdown</h4>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={analytics.per_category || []}
+                        dataKey="total"
+                        nameKey="category"
+                        outerRadius={80}
+                        label
+                      >
+                        {(analytics.per_category || []).map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={
+                              ["#22c55e", "#3b82f6", "#f97316", "#e11d48", "#a855f7"][
+                                index % 5
+                              ]
+                            }
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Monthly spend */}
+                <div className="analytics-card analytics-full">
+                  <h4 className="analytics-title">Monthly spend</h4>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={analytics.per_month || []}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis dataKey="month" stroke="#9ca3af" />
+                      <YAxis stroke="#9ca3af" />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="total"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
