@@ -1,0 +1,92 @@
+-- Make sure you are using the correct database
+
+create database bill_split_db;
+USE bill_split_db;
+
+-- 1) Group table
+CREATE TABLE IF NOT EXISTS expenses_group (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_by_id INT NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    CONSTRAINT fk_group_created_by
+        FOREIGN KEY (created_by_id)
+        REFERENCES auth_user(id)
+        ON DELETE CASCADE
+);
+
+-- 2) GroupMember table
+CREATE TABLE IF NOT EXISTS expenses_groupmember (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    group_id INT NOT NULL,
+    user_id INT NOT NULL,
+    joined_at DATETIME(6) NOT NULL,
+    CONSTRAINT fk_groupmember_group
+        FOREIGN KEY (group_id)
+        REFERENCES expenses_group(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_groupmember_user
+        FOREIGN KEY (user_id)
+        REFERENCES auth_user(id)
+        ON DELETE CASCADE,
+    CONSTRAINT uniq_group_user UNIQUE (group_id, user_id)
+);
+
+-- 3) Expense table
+CREATE TABLE IF NOT EXISTS expenses_expense (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    group_id INT NOT NULL,
+    description VARCHAR(255) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    paid_by_id INT NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    CONSTRAINT fk_expense_group
+        FOREIGN KEY (group_id)
+        REFERENCES expenses_group(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_expense_paid_by
+        FOREIGN KEY (paid_by_id)
+        REFERENCES auth_user(id)
+        ON DELETE CASCADE
+);
+
+-- 4) ExpenseShare table
+CREATE TABLE IF NOT EXISTS expenses_expenseshare (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    expense_id INT NOT NULL,
+    user_id INT NOT NULL,
+    share_amount DECIMAL(10, 2) NOT NULL,
+    CONSTRAINT fk_share_expense
+        FOREIGN KEY (expense_id)
+        REFERENCES expenses_expense(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_share_user
+        FOREIGN KEY (user_id)
+        REFERENCES auth_user(id)
+        ON DELETE CASCADE
+);
+
+-- 5) Settlement table
+CREATE TABLE IF NOT EXISTS expenses_settlement (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    group_id INT NOT NULL,
+    from_user_id INT NOT NULL,
+    to_user_id INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    note VARCHAR(255) DEFAULT '' NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    CONSTRAINT fk_settlement_group
+        FOREIGN KEY (group_id)
+        REFERENCES expenses_group(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_settlement_from_user
+        FOREIGN KEY (from_user_id)
+        REFERENCES auth_user(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_settlement_to_user
+        FOREIGN KEY (to_user_id)
+        REFERENCES auth_user(id)
+        ON DELETE CASCADE
+);
+select * from expenses_settlement;
+select * from expenses_group;

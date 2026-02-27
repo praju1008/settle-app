@@ -31,6 +31,8 @@ import {
   Bar,
 } from "recharts";
 
+/* --------- Helpers --------- */
+
 // Calculate balances for each member based on expenses and settlements
 function calculateBalances(members, expenses, settlements) {
   const balances = {};
@@ -86,7 +88,9 @@ function calculateBalances(members, expenses, settlements) {
   return balances;
 }
 
-// Add-Expense form
+/* --------- Components --------- */
+
+// Add-Expense form (normal)
 function ExpensesForm({ groupId, onAddExpense, currentPayer }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -170,7 +174,79 @@ function ExpensesForm({ groupId, onAddExpense, currentPayer }) {
   );
 }
 
-function GroupDetailPage({ group, onBack }) {
+// AI natural-language input
+function NaturalLanguageExpense({ groupId, members, onCreateFromParsed }) {
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const sentence = text.trim();
+    if (!sentence) return;
+
+    try {
+      setLoading(true);
+      setLocalError("");
+
+      // If you don't have React proxy, use full URL:
+      // const res = await fetch("http://127.0.0.1:8000/api/parse-expense-text/", {
+      const res = await fetch("/api/parse-expense-text/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: sentence,
+          group_id: groupId,
+          members,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to parse");
+      }
+
+      const parsed = await res.json();
+      await onCreateFromParsed(parsed);
+      setText("");
+    } catch (err) {
+      console.error(err);
+      setLocalError(
+        "Could not understand that sentence. Try a simpler one, like: 'Prashant paid 1500 for dinner yesterday split between all'."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="section">
+      <h3 className="section-title">Add via sentence (AI)</h3>
+      <p className="small-text">
+        Example: <em>Prashant paid 1500 for dinner yesterday split between all</em>
+      </p>
+      {localError && <p className="error-text">{localError}</p>}
+      <form onSubmit={handleSubmit}>
+        <div className="form-row">
+          <label>Sentence</label>
+          <input
+            type="text"
+            placeholder="Type your expense in plain English..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            disabled={loading}
+          />
+        </div>
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? "Understanding..." : "Create Expense"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+/* --------- Main page --------- */
+
+function GroupDetailPage({ group, onBack, theme, setTheme }) {
   const [members, setMembers] = useState([]);
   const [currentPayer, setCurrentPayer] = useState("");
 
@@ -283,6 +359,19 @@ function GroupDetailPage({ group, onBack }) {
       setError("Failed to add expense");
       throw err;
     }
+  };
+
+  const handleCreateFromParsed = async (parsed) => {
+    const payload = {
+      group: group.id,
+      description: parsed.description,
+      amount: parsed.amount,
+      paid_by_name: parsed.payer_name,
+      // date: parsed.date,
+      // split_type: parsed.split_type,
+      // participants: parsed.participants,
+    };
+    await handleAddExpense(payload);
   };
 
   const handleAddMember = async (e) => {
@@ -452,9 +541,19 @@ function GroupDetailPage({ group, onBack }) {
   return (
     <div className="group-detail-page">
       <div className="group-detail-page-inner">
-        <button className="back-button" onClick={onBack}>
-          ← Back to Groups
-        </button>
+        <div className="top-bar">
+          <button className="back-button" onClick={onBack}>
+            ← Back to Groups
+          </button>
+
+          <button
+            type="button"
+            className="btn-pill theme-toggle-btn"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            {theme === "dark" ? "☀ Light" : "🌙 Dark"}
+          </button>
+        </div>
 
         <h2 className="group-title">{group?.name || "Group"}</h2>
 
@@ -594,7 +693,14 @@ function GroupDetailPage({ group, onBack }) {
               currentPayer={currentPayer}
             />
 
-            {/* Column 3: Expenses list */}
+            {/* Column 3: AI sentence input */}
+            <NaturalLanguageExpense
+              groupId={group.id}
+              members={members}
+              onCreateFromParsed={handleCreateFromParsed}
+            />
+
+            {/* Column 4: Expenses list */}
             <div className="section">
               <h3 className="section-title">Expenses</h3>
               {expenses.length === 0 ? (
@@ -701,7 +807,7 @@ function GroupDetailPage({ group, onBack }) {
               )}
             </div>
 
-            {/* Column 4: Settlements */}
+            {/* Column 5: Settlements */}
             <div className="section">
               <h3 className="section-title">Settle Payment (record only)</h3>
               <form className="settle-form" onSubmit={handleAddSettlement}>
@@ -795,7 +901,7 @@ function GroupDetailPage({ group, onBack }) {
               )}
             </div>
 
-            {/* Column 5: Balances */}
+            {/* Column 6: Balances */}
             <div className="section">
               <h3 className="section-title">Balances (approx)</h3>
               <ul className="balances-list">
